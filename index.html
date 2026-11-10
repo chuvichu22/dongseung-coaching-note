@@ -637,9 +637,11 @@ select.form-control { appearance: none; background-image: url("data:image/svg+xm
     <div class="card">
       <div class="card-title">📷 사진 첨부</div>
       <div class="btn-group" style="margin-bottom:12px;">
-        <button class="btn btn-outline" onclick="document.getElementById('photo-input').click()">📸 사진 추가</button>
+        <button class="btn btn-primary" onclick="document.getElementById('photo-album').click()">🖼 앨범에서 선택</button>
+        <button class="btn btn-outline" onclick="document.getElementById('photo-camera').click()">📷 카메라 촬영</button>
       </div>
-      <input type="file" id="photo-input" accept="image/*" multiple capture="environment" style="display:none" onchange="handlePhotos(event)">
+      <input type="file" id="photo-album" accept="image/*" multiple style="display:none" onchange="handlePhotos(event)">
+      <input type="file" id="photo-camera" accept="image/*" capture="environment" style="display:none" onchange="handlePhotos(event)">
       <div class="photo-grid" id="photo-preview"></div>
     </div>
 
@@ -831,63 +833,31 @@ const memStore = {
   employees: [], stores: [], records: [], photos: [], improvements: [], meta: []
 };
 
+// 간소화 체크리스트
+// S = 매장마다 체크 (진열·전산 등 현장 업무)
+// P = 사원 역량 (같은 사원이면 이전 평가 불러오기 가능)
 const CHECKLIST = {
-  A: {
-    title: 'A. 매장 방문 및 기본 업무',
+  S: {
+    title: '① 매장 현장 업무 (매장마다)',
+    scope: 'store',
     items: [
-      '매장 방문 시 담당자와 원활하게 소통하는가?',
-      '매장별 담당 업무와 방문 목적을 숙지하고 있는가?',
-      '매장 방문 후 필요한 업무를 빠짐없이 수행하는가?',
-      '매장 담당자 및 대리점과 적절하게 소통하는가?',
-      '매장별 특이사항 및 요청사항을 파악하는가?'
+      '진열 상태·선입선출이 적절한가?',
+      '유통기한·재고·결품을 확인·조치하는가?',
+      '가격표·POP 부착이 정확한가?',
+      '행사·연관진열 활동을 하는가?',
+      '진열조사·전산 등록을 빠짐없이 하는가?',
+      '활동일보·현장 사진을 등록하는가?'
     ]
   },
-  B: {
-    title: 'B. 매대 진열 및 관리',
+  P: {
+    title: '② 사원 역량·태도 (사원 기준)',
+    scope: 'person',
     items: [
-      '본매대 제품 진열 상태를 확인하는가?',
-      '선입선출을 정확하게 수행하는가?',
-      '유통기한 및 재고 상태를 확인하는가?',
-      '가격표 및 할인 가격 고지를 확인하는가?',
-      'POP 부착 및 관리가 적절한가?',
-      '행사매대 및 연관진열 활동을 수행하는가?',
-      '진열 변경사항을 정확하게 조사하고 등록하는가?',
-      '결품 및 미진열 제품을 확인하고 조치하는가?'
-    ]
-  },
-  C: {
-    title: 'C. 영업 및 판매 활성화',
-    items: [
-      '신규 제품 입점 활동을 수행하는가?',
-      '연관진열 기회를 적극적으로 발굴하는가?',
-      '매장 담당자에게 추가 진열을 제안하는가?',
-      '제품 및 행사에 대한 이해도가 충분한가?',
-      '판매 증대를 위한 적극적인 활동을 하는가?',
-      '고객에게 제품의 특징과 장점을 정확하게 전달하는가?',
-      '행사 판매 시 적절한 시식 및 판매 멘트를 활용하는가?'
-    ]
-  },
-  D: {
-    title: 'D. 모바일 업무 및 전산 등록',
-    items: [
-      '모바일 업무 시스템을 능숙하게 사용하는가?',
-      '매장 방문 시 활동일보를 작성하는가?',
-      '진열조사를 정확하게 등록하는가?',
-      '유통기한 조사 및 변경사항을 등록하는가?',
-      '행사매대 현황 및 사진을 등록하는가?',
-      '업무 등록 누락 없이 마무리하는가?',
-      '사진 및 현장 자료를 정확하게 등록하는가?'
-    ]
-  },
-  E: {
-    title: 'E. 업무 태도 및 자기관리',
-    items: [
-      '시간 약속 및 근무 일정을 준수하는가?',
-      '업무를 책임감 있게 수행하는가?',
-      '매장 내 기본적인 근무 예절을 지키는가?',
-      '문제 발생 시 매니저에게 신속하게 공유하는가?',
-      '새로운 업무를 배우려는 의지가 있는가?',
-      '교육받은 내용을 실제 업무에 적용하는가?'
+      '매장 담당자와 원활히 소통하는가?',
+      '업무·제품을 숙지하고 있는가?',
+      '판매·입점 등 영업 활동을 하는가?',
+      '시간·근무 예절·책임감을 지키는가?',
+      '교육 내용을 업무에 적용하는가?'
     ]
   }
 };
@@ -1342,6 +1312,10 @@ async function addStoreByName(name) {
 function buildChecklist() {
   const container = document.getElementById('checklist-container');
   let html = '';
+  html += `<div style="margin-bottom:10px;">
+    <button type="button" class="btn btn-outline btn-sm" style="width:100%;" onclick="loadPersonChecksFromPrev()">↩️ 같은 사원 이전 역량평가 불러오기</button>
+    <p style="font-size:0.8rem;color:var(--text-secondary);margin-top:6px;">여러 매장을 돌 때 ② 사원 역량만 이전 기록을 가져올 수 있습니다. ① 매장 업무는 매장마다 새로 체크하세요.</p>
+  </div>`;
   Object.keys(CHECKLIST).forEach(sec => {
     const s = CHECKLIST[sec];
     html += `<div class="section" id="sec-${sec}">
@@ -1358,15 +1332,45 @@ function buildChecklist() {
           ${RATINGS.map(r => `<button type="button" class="rating-btn" data-key="${key}" data-rating="${r}" onclick="setRating('${key}','${r}')">${r === '개선필요' ? '개선필요' : r}</button>`).join('')}
         </div>
         <div class="memo-area" id="memo-${key}">
-          <textarea placeholder="이 항목에 대한 메모 (선택)" id="memotext-${key}" oninput="updateCheckMemo('${key}')"></textarea>
+          <textarea placeholder="메모 (선택)" id="memotext-${key}" oninput="updateCheckMemo('${key}')"></textarea>
         </div>
       </div>`;
     });
     html += `</div></div>`;
   });
   container.innerHTML = html;
-  // open first section
-  document.getElementById('sec-A')?.classList.add('open');
+  document.getElementById('sec-S')?.classList.add('open');
+}
+
+async function loadPersonChecksFromPrev() {
+  const empName = (document.getElementById('rec-employee')?.value || '').trim();
+  if (!empName) {
+    toast('먼저 사원을 선택하세요');
+    return;
+  }
+  const records = await dbGetAll('records');
+  const prev = records
+    .filter(r => r.employeeName === empName && r.checks)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.id || 0) - (a.id || 0))[0];
+  if (!prev) {
+    toast('이 사원의 이전 평가가 없습니다');
+    return;
+  }
+  // P 섹션(사원 역량)만 복사
+  let copied = 0;
+  Object.keys(prev.checks || {}).forEach(key => {
+    if (!key.startsWith('P')) return;
+    const c = prev.checks[key];
+    if (!c || !c.rating) return;
+    checkData[key] = { rating: c.rating, memo: c.memo || '' };
+    setRating(key, c.rating);
+    const el = document.getElementById('memotext-' + key);
+    if (el) el.value = c.memo || '';
+    copied++;
+  });
+  document.getElementById('sec-P')?.classList.add('open');
+  updateProgress();
+  toast(copied ? `이전 역량평가 ${copied}항목 불러옴 (${prev.date})` : '불러올 역량 항목이 없습니다');
 }
 
 function toggleSection(sec) {
